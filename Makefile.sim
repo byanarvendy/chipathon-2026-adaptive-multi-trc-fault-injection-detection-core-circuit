@@ -1,0 +1,31 @@
+VERILATOR 	= verilator
+V_FLAGS 	= --binary --sv --trace --timing --Mdir $(BUILD_DIR)
+
+INC_DIR 	= -Irtl/packages -Irtl/lib -Irtl/core
+SIM_DIR 	= sim
+BUILD_DIR   = $(SIM_DIR)/build
+BIN         = $(BUILD_DIR)/V$(TOP_MODULE)
+RTL_DIR     = src/rtl
+TB_DIR      = src/tb
+
+TOP_MODULE 	= tb_register
+
+SRCS 		= $(shell find $(RTL_DIR) -name "*.sv") \
+              $(TB_DIR)/$(TOP_MODULE).sv
+
+
+all: clean compile sim
+
+compile:
+	$(VERILATOR) $(V_FLAGS) $(INC_DIR) $(SRCS) --top-module $(TOP_MODULE)
+
+sim:
+	./$(BIN)
+
+wave:
+	gtkwave $(SIM_DIR)/$(TOP_MODULE).vcd
+
+clean:
+	rm -rf $(BUILD_DIR) $(SIM_DIR)/$(TOP_MODULE).vcd
+
+.PHONY: all compile sim wave clean
