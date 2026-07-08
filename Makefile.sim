@@ -8,7 +8,7 @@ BIN         = $(BUILD_DIR)/V$(TOP_MODULE)
 RTL_DIR     = src/rtl
 TB_DIR      = src/tb
 
-TOP_MODULE 	= tb_register
+TOP_MODULE 	= tb_spi_slave_interface
 
 SRCS 		= $(shell find $(RTL_DIR) -name "*.sv") \
               $(TB_DIR)/$(TOP_MODULE).sv
