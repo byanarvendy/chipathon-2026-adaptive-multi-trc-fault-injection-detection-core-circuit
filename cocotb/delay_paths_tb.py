@@ -6,7 +6,6 @@
 # as chip_top_tb.py so it can be invoked the same way.
 
 import os
-import logging
 from pathlib import Path
 
 import cocotb
@@ -25,6 +24,7 @@ hdl_toplevel = "delay_paths"
 
 async def reset_dut(dut, cycles=3):
     dut.iRST.value = 0
+    dut.iTRC_SEL.value = 0
     await Timer(15, unit="ns")
     dut.iRST.value = 1
     for _ in range(cycles):
@@ -34,8 +34,6 @@ async def reset_dut(dut, cycles=3):
 @cocotb.test()
 async def test_nominal_no_glitch(dut):
     """At nominal 100 MHz, no TRC channel should report an error."""
-    logger = logging.getLogger("trc_testbench")
-
     clock = Clock(dut.iCLK, 10, unit="ns")  # 10 ns = 100 MHz
     cocotb.start_soon(clock.start())
 
@@ -44,7 +42,7 @@ async def test_nominal_no_glitch(dut):
     for _ in range(20):
         await RisingEdge(dut.iCLK)
 
-    logger.info(f"oTRC_ERR (nominal) = {dut.oTRC_ERR.value}")
+    dut._log.info(f"oTRC_ERR (nominal) = {dut.oTRC_ERR.value}")
     assert dut.oTRC_ERR.value == 0, (
         f"Expected no glitch at nominal clock, got oTRC_ERR={dut.oTRC_ERR.value}. "
         "If this fails, the delay chain lengths (192/144/96/48 inverters) "
@@ -57,8 +55,6 @@ async def test_nominal_no_glitch(dut):
 @cocotb.test()
 async def test_glitch_injection(dut):
     """Speeding the clock up drastically should trip at least one TRC channel."""
-    logger = logging.getLogger("trc_testbench")
-
     clock = Clock(dut.iCLK, 10, unit="ns")
     cocotb.start_soon(clock.start())
 
@@ -74,11 +70,55 @@ async def test_glitch_injection(dut):
     for _ in range(30):
         await RisingEdge(dut.iCLK)
 
-    logger.info(f"oTRC_ERR (during glitch) = {dut.oTRC_ERR.value}")
+    dut._log.info(f"oTRC_ERR (during glitch) = {dut.oTRC_ERR.value}")
     assert dut.oTRC_ERR.value != 0, (
         "Expected at least one TRC channel to trip under a severe "
         "overclocking glitch, but oTRC_ERR stayed 0000."
     )
+
+
+@cocotb.test()
+async def test_mux_selects_correct_channel(dut):
+    """Prove oTRC_MUX is a real mux: cycle iTRC_SEL through 0..3 and check
+    oTRC_MUX always matches oTRC_ERR[iTRC_SEL] -- i.e. only ONE channel is
+    being observed at a time, selected by iTRC_SEL, while oTRC_ERR keeps
+    reporting all 4 channels in parallel underneath."""
+    clock = Clock(dut.iCLK, 10, unit="ns")
+    cocotb.start_soon(clock.start())
+
+    await reset_dut(dut)
+    for _ in range(10):
+        await RisingEdge(dut.iCLK)
+
+    # Force a glitch first so oTRC_ERR has some 1-bits to actually
+    # distinguish between channels (all-zero would "pass" trivially).
+    fast_clock = Clock(dut.iCLK, 1, unit="ns")
+    cocotb.start_soon(fast_clock.start())
+    for _ in range(20):
+        await RisingEdge(dut.iCLK)
+
+    err_bus = dut.oTRC_ERR.value
+    dut._log.info(f"oTRC_ERR snapshot for mux test = {err_bus}")
+
+    for sel in range(4):
+        dut.iTRC_SEL.value = sel
+        await Timer(1, unit="ns")  # let the combinational mux settle
+
+        expected_bit = (int(err_bus) >> sel) & 0x1
+        actual_bit = int(dut.oTRC_MUX.value)
+
+        dut._log.info(
+            f"iTRC_SEL={sel} -> oTRC_MUX={actual_bit} "
+            f"(expected oTRC_ERR[{sel}]={expected_bit})"
+        )
+        assert actual_bit == expected_bit, (
+            f"MUX MISMATCH at iTRC_SEL={sel}: oTRC_MUX={actual_bit}, "
+            f"but oTRC_ERR[{sel}]={expected_bit}. oTRC_MUX is not "
+            f"correctly selecting channel {sel}."
+        )
+
+    dut._log.info("Confirmed: oTRC_MUX correctly tracks each individually "
+                   "selected TRC channel -- this IS a real 4:1 mux.")
 
 
 def delay_paths_runner():

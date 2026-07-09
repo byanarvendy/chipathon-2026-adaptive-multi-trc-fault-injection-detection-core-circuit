@@ -1,43 +1,39 @@
 // =============================================================
-// Module : delay_paths  (FIXED)
+// Module : delay_paths  (UPDATED -- mux re-added for calibration)
 //
-// Fixes applied vs original file:
+// History:
 //   1. Instance names (u_trc0..u_trc3) no longer collide with net
 //      names (trc0_err..trc3_err) -- the original file used the
-//      SAME identifiers for both, which is illegal Verilog and
-//      failed to elaborate in both Icarus and Verilator:
-//        "Instance has the same name as variable: 'trc0'"
-//   2. Output changed from a single MUX'd bit (oTRC, selected by
-//      iTRC_SEL) to a 4-bit PARALLEL error bus oTRC_ERR[3:0].
-//      This matches how the rest of the design actually consumes
-//      it: failure_estimation.sv expects a 4-bit thermometer-coded
-//      vector (see its casez patterns 4'b1???/01??/001?/0001), and
-//      the chipathon spec explicitly says the Adaptive Decision
-//      block "processes a 4-bit parallel error bus representing
-//      all TRC channels simultaneously... instead of routing a
-//      single analog clock signal through a physical multiplexer."
-//      A single-bit MUX'd output (as the original file produced)
-//      is architecturally incompatible with that.
-//   3. Inverter counts corrected to match the documented table in
-//      Adaptive_Multi_TRC_Spec.pdf / the Chipathon core-circuit doc
-//      (192/144/96/48), instead of the RTL's previous 45/35/25/15
-//      (which also happened to be odd -- see trc_behavioral_chain
-//      fix notes on why that matters).
+//      SAME identifiers for both, which is illegal Verilog.
+//   2. Output changed from a single MUX'd bit to a 4-bit PARALLEL
+//      error bus oTRC_ERR[3:0], since failure_estimation.sv needs
+//      the full thermometer-coded vector, not one bit at a time.
+//   3. Inverter counts corrected to 192/144/96/48 per the spec table.
+//   4. UPDATE: per-channel calibration (the "vGlitch" tuning process
+//      from the Black Hat reference) needs to observe ONE TRC channel
+//      at a time, not the whole bus at once. Added back oTRC_MUX,
+//      selected by iTRC_SEL[1:0] -- this does NOT replace oTRC_ERR
+//      (failure_estimation still needs the full parallel bus), it's
+//      an additional debug/calibration tap. iTRC_SEL is meant to be
+//      driven by adaptive_calibration's oVIRTUAL_ACTIVE_TRC output
+//      (or REG_CONTROL_CONFIG.TRC_SEL in manual mode), matching the
+//      "which TRC channel is currently the enforced boundary" concept
+//      already described in the spec docs.
 // =============================================================
 module delay_paths (
     input  logic       iCLK,
     input  logic       iRST,
 
-    output logic [3:0] oTRC_ERR   // {TRC3, TRC2, TRC1, TRC0}, always active
+    input  logic [1:0] iTRC_SEL,   // channel select for oTRC_MUX (calibration/debug)
+
+    output logic [3:0] oTRC_ERR,   // {TRC3, TRC2, TRC1, TRC0}, always active (parallel)
+    output logic       oTRC_MUX    // single selected channel (calibration/debug)
 );
 
     localparam real DELAY_ELEMENT = 0.05; // ns, sim-only per-inverter delay
 
     /* ------------------------------------------------------------
        TRC CHANNELS -- run in parallel at all times, per spec
-       (manual single-channel select via REG_CONTROL_CONFIG.TRC_SEL
-       is a register/diagnostic concept, not a physical mux on the
-       detection path -- see top-level wiring notes)
     ------------------------------------------------------------ */
     trc_behavioral_chain #(
         .NUM_INVERTERS(192),   // Extreme sensitivity
@@ -66,5 +62,18 @@ module delay_paths (
     ) u_trc3 (
         .iCLK (iCLK), .iRST (iRST), .oTRC (oTRC_ERR[3])
     );
+
+    /* ------------------------------------------------------------
+       CALIBRATION MUX -- observe one channel at a time
+    ------------------------------------------------------------ */
+    always_comb begin
+        case (iTRC_SEL)
+            2'b00:   oTRC_MUX = oTRC_ERR[0];
+            2'b01:   oTRC_MUX = oTRC_ERR[1];
+            2'b10:   oTRC_MUX = oTRC_ERR[2];
+            2'b11:   oTRC_MUX = oTRC_ERR[3];
+            default: oTRC_MUX = oTRC_ERR[0];
+        endcase
+    end
 
 endmodule
