@@ -1,0 +1,52 @@
+# librelane/trc_macro.yaml
+# Standalone hardening config for the Multi-TRC block only
+# (delay_paths.sv + trc_behavioral_chain.sv), GF180MCU, LibreLane 3.x
+# Mirrors the style of counter_macro.yaml / alu_macro.yaml in
+# examples/librelane_rtl2gds_gf180/04_counter_alu_multimacro
+
+DESIGN_NAME: delay_paths
+
+VERILOG_FILES:
+  - dir::../rtl/trc_behavioral_chain.sv
+  - dir::../rtl/delay_paths.sv
+
+# LibreLane 3.x SystemVerilog front-end (Slang). Needed for `logic`,
+# always_ff/always_comb, generate/genvar as used in these files.
+USE_SLANG: true
+
+PDK: gf180mcuD
+
+# Required so trc_behavioral_chain.sv's `ifdef SYNTHESIS guard picks the
+# delay-free branch here (the sim-only #(DELAY_VAL) construct is a hard
+# error in LibreLane's Slang front-end, not just a dropped warning).
+VERILOG_DEFINES:
+  - SYNTHESIS
+
+CLOCK_PORT: iCLK
+# Starting point only -- see the tutorial notes on why this number is
+# NOT the "vGlitch" calibration point, just a safe period to get a
+# first synthesis + floorplan through cleanly. Re-tune after checking
+# the STA report.
+CLOCK_PERIOD: 20   # ns (50 MHz)
+
+# UPDATE 3: found the real root cause via the floorplan log --
+# `initialize_floorplan -utilization 50 -aspect_ratio 1 ...` was being
+# called, completely ignoring DIE_AREA/CORE_AREA. That's because the
+# default FP_SIZING is "relative" (computed from FP_CORE_UTIL +
+# FP_ASPECT_RATIO), and DIE_AREA/CORE_AREA are only honored when
+# FP_SIZING is explicitly "absolute". This was the actual missing
+# piece the whole time.
+FP_SIZING: absolute
+DIE_AREA:  [0, 0, 300, 300]
+CORE_AREA: [10, 10, 290, 290]
+
+# --- Timing note for whoever runs this next ---
+# TRC channels are INTENTIONALLY marginal/violating on their internal
+# delay-chain path (that's the whole point of the sensor). Standard
+# OpenSTA/OpenROAD optimization steps may try to buffer/upsize cells
+# along trc_behavioral_chain's inverter chain to "fix" what looks like
+# a timing violation. If you see the flow aggressively resizing those
+# cells or if post-synthesis behavior stops matching the RTL waveform,
+# add a custom SDC (PNR_SDC_FILE) that puts a `set_false_path -through`
+# (or `set_multicycle_path`) on the delay_wire nets inside each
+# trc_behavioral_chain instance, so the optimizer leaves that path alone.
