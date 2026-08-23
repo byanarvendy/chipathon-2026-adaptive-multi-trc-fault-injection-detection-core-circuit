@@ -9,9 +9,5 @@ final_block/
 img/
 *.lyrdb
 .ipynb_checkpoints/
-<<<<<<< HEAD
-*.raw
-=======
 
 sim/build/
->>>>>>> main
