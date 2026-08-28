@@ -31,40 +31,40 @@ library (trc_top) {
   }
 
   cell ("trc_top") {
-    area : 57848.781 
+    area : 57848.730 
     is_macro_cell : true;
     pin("iCLK") {
       direction : input;
       clock : true;
-      capacitance : 0.0481;
+      capacitance : 0.0468;
       timing() {
         timing_sense : positive_unate;
         timing_type : min_clock_tree_path;
 	cell_rise(scalar) {
-          values("0.90991");
+          values("0.77861");
 	}
 	cell_fall(scalar) {
-          values("0.87426");
+          values("0.73117");
 	}
       }
       timing() {
         timing_sense : positive_unate;
         timing_type : max_clock_tree_path;
 	cell_rise(scalar) {
-          values("0.92111");
+          values("0.79155");
 	}
 	cell_fall(scalar) {
-          values("0.88583");
+          values("0.74465");
 	}
       }
     }
     pin("iRST") {
       direction : input;
-      capacitance : 0.0071;
+      capacitance : 0.0198;
     }
     pin("iSPI_CS") {
       direction : input;
-      capacitance : 0.0089;
+      capacitance : 0.0042;
     }
     pin("iSPI_MOSI") {
       direction : input;
@@ -72,7 +72,7 @@ library (trc_top) {
     }
     pin("iSPI_SCK") {
       direction : input;
-      capacitance : 0.0096;
+      capacitance : 0.0040;
     }
     pin("oINTERRUPT_CS") {
       direction : output;
@@ -98,15 +98,15 @@ library (trc_top) {
         timing_type : rising_edge;
 	cell_rise(template_1) {
           index_1("0.00100,  0.00758,  0.03066,  0.07475,  0.14340,  0.23980,  0.36660,  0.52640,  0.72140,  0.95390");
-          values("6.80542,6.82792,6.88969,6.99403,7.15288,7.37636,7.67175,8.04375,8.49783,9.03983");
+          values("6.64292,6.66543,6.72720,6.83155,6.99040,7.21388,7.50928,7.88128,8.33535,8.87735");
 	}
 	rise_transition(template_1) {
           index_1("0.00100,  0.00758,  0.03066,  0.07475,  0.14340,  0.23980,  0.36660,  0.52640,  0.72140,  0.95390");
-          values("0.07287,0.09816,0.18151,0.35125,0.63069,1.02900,1.55308,2.21575,3.02375,3.98692");
+          values("0.07285,0.09815,0.18150,0.35125,0.63069,1.02900,1.55308,2.21577,3.02377,3.98692");
 	}
 	cell_fall(template_1) {
           index_1("0.00100,  0.00758,  0.03066,  0.07475,  0.14340,  0.23980,  0.36660,  0.52640,  0.72140,  0.95390");
-          values("6.62062,6.64512,6.71457,6.82931,7.00071,7.24022,7.55511,7.95311,8.43893,9.01811");
+          values("6.45903,6.48353,6.55299,6.66772,6.83912,7.07864,7.39352,7.79152,8.27734,8.85652");
 	}
 	fall_transition(template_1) {
           index_1("0.00100,  0.00758,  0.03066,  0.07475,  0.14340,  0.23980,  0.36660,  0.52640,  0.72140,  0.95390");
@@ -144,7 +144,7 @@ library (trc_top) {
     }
     pin("oSPI_MISO_OUT") {
       direction : output;
-      capacitance : 0.0034;
+      capacitance : 0.0025;
     }
     pin("oSPI_MISO_PD") {
       direction : output;
