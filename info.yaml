@@ -14,6 +14,10 @@ project:
   discord: "@abem._"
   description: "Adaptive multi-TRC fault injection detection core"
   lvs_config: "lvs_config.json"
+  gf_def_ready: true            # data ready for def generation with global foundries' pad frame
+  ws_def_ready: true            # data ready for def generation with wafer space pad frame
+  drc_ready: true               # data ready for integration and DRC
+  lvs_ready: true               # data ready for integrated LVS
 
 # ======================================================
 # Pin definitions
